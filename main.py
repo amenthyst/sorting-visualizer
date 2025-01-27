@@ -283,11 +283,37 @@ def merge_sort(screen):
     return array
 
 
+def quick_sort(screen):
+    array = plotter.array
+
+    def partition(array, low, high):
+        pivot = array[high]
+        i = low - 1
+        for j in range(low, high):
+            if array[j] < pivot:
+                i += 1
+                array[i], array[j] = array[j], array[i]
+                plotter.draw_whole_array(screen, color_info={i + 1: "red"})
+                yield True
+
+        array[i + 1], array[high] = array[high], array[i + 1]
+        plotter.draw_whole_array(screen, color_info={i + 1: "red"})
+        return i + 1
+
+    def quick_sort(array, low, high):
+        if low < high:
+            pi = yield from partition(array, low, high)
+            yield from quick_sort(array, low, pi - 1)
+            yield from quick_sort(array, pi + 1, high)
+
+    yield from quick_sort(array, 0, len(array) - 1)
+
 
 buttons = [Button(1050, 20, 100, 50, "Shuffle", plotter.shuffle),
            Button(1050, 70, 150, 50, "Bubble Sort", bubble_sort),
            Button(1050,120,150,50,"Insertion Sort", insertion_sort),
-           Button(1050,170,150,50,"Merge Sort", merge_sort)]
+           Button(1050,170,150,50,"Merge Sort", merge_sort),
+           Button(1050,220,150,50,"Quick Sort", quick_sort)]
 input_boxes = [InputBox(1050, 600, 200, 40, "Set Array Length", plotter.initialize_array)]
 running = True
 while running:
