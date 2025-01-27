@@ -309,11 +309,42 @@ def quick_sort(screen):
     yield from quick_sort(array, 0, len(array) - 1)
 
 
+def shaker_sort(screen):
+    array = plotter.array
+    start = 0
+    end = len(array)-1
+    swapped = True
+    while swapped:
+        swapped = False
+        # forwards
+        for i in range(start,end):
+            if array[i] > array[i+1]:
+                array[i], array[i+1] = array[i+1], array[i]
+                swapped = True
+                plotter.draw_whole_array(screen, color_info={i: "red"})
+                yield True
+        if not swapped:
+            break
+        swapped = False
+        end -= 1
+        # backwards
+        for i in range(end-1, start-1, -1):
+            if array[i] > array[i+1]:
+                array[i], array[i + 1] = array[i + 1], array[i]
+                swapped = True
+                plotter.draw_whole_array(screen, color_info={i: "red"})
+                yield True
+        if not swapped:
+            break
+        start += 1
+
+
 buttons = [Button(1050, 20, 100, 50, "Shuffle", plotter.shuffle),
            Button(1050, 70, 150, 50, "Bubble Sort", bubble_sort),
            Button(1050,120,150,50,"Insertion Sort", insertion_sort),
            Button(1050,170,150,50,"Merge Sort", merge_sort),
-           Button(1050,220,150,50,"Quick Sort", quick_sort)]
+           Button(1050,220,150,50,"Quick Sort", quick_sort),
+           Button(1050,270,150,50,"Shaker Sort", shaker_sort)]
 input_boxes = [InputBox(1050, 600, 200, 40, "Set Array Length", plotter.initialize_array)]
 running = True
 while running:
@@ -334,6 +365,6 @@ while running:
     pygame.display.flip()
 
     # how many updates per second
-    clock.tick(500)
+    clock.tick(200)
 
 pygame.quit()
