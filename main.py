@@ -338,13 +338,40 @@ def shaker_sort(screen):
             break
         start += 1
 
+def counting_sort(screen):
+    array = plotter.array
+    M = max(array)
+    count_array = [0] * (M+1)
+    # fill count array
+    for num in array:
+        count_array[num] += 1
+    # get prefix sum of array
+    for i in range(1,M+1):
+        count_array[i] += count_array[i-1]
+    output = [0] * len(array)
+    for i in range(len(array)-1, -1, -1):
+        output[count_array[array[i]] - 1] = array[i]
+        count_array[array[i]] -= 1
+        plotter.draw_whole_array(screen, color_info={i:"red"})
+        yield True
+    for i in range(len(array)):
+        array[i] = output[i]
+        plotter.draw_whole_array(screen, color_info={i: "red"})
+        yield True
+
+
+
+
+
+
 
 buttons = [Button(1050, 20, 100, 50, "Shuffle", plotter.shuffle),
            Button(1050, 70, 150, 50, "Bubble Sort", bubble_sort),
            Button(1050,120,150,50,"Insertion Sort", insertion_sort),
            Button(1050,170,150,50,"Merge Sort", merge_sort),
            Button(1050,220,150,50,"Quick Sort", quick_sort),
-           Button(1050,270,150,50,"Shaker Sort", shaker_sort)]
+           Button(1050,270,150,50,"Shaker Sort", shaker_sort),
+           Button(1050,320,150,50,"Counting Sort", counting_sort)]
 input_boxes = [InputBox(1050, 600, 200, 40, "Set Array Length", plotter.initialize_array)]
 running = True
 while running:
