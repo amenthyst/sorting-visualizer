@@ -3,6 +3,7 @@ import random
 
 pygame.init()
 
+# TODO: shell sort, bucket sort, selection sort, bogo sort, screen saver mode
 max_amount = 1000
 
 # create a window
@@ -476,6 +477,40 @@ def tim_sort(screen):
             size *= 2
     yield from tim_sort(array)
 
+def radix_sort(screen):
+    array = plotter.array
+    # stable sorting algorithm to sort each digit
+    def counting_sort(array, exp):
+        n = len(array)
+        output = [0] * n
+        count = [0] * 10
+        # store occurences of digits
+        for i in range(0, n):
+            index = array[i] // exp
+            count[index % 10] += 1
+        # prefix sum array
+        for i in range(1,10):
+            count[i] += count[i-1]
+        i = n - 1
+        while i >= 0:
+            index = array[i] // exp
+            # shift count 1 to the left
+            output[count[index % 10] - 1] = array[i]
+            count[index % 10] -= 1
+            i -= 1
+        i=0
+        for i in range(n):
+            array[i] = output[i]
+            plotter.draw_whole_array(screen,color_info={i: "red"})
+            yield True
+
+    def radix_sort(array):
+        _max = max(array)
+        exp = 1
+        while _max / exp >= 1:
+            yield from counting_sort(array, exp)
+            exp *= 10
+    yield from radix_sort(array)
 
 def quit(screen):
     pygame.quit()
@@ -492,6 +527,7 @@ buttons = [Button(x, 20, 100, 50, "Shuffle", plotter.shuffle),
            Button(x,320,150,50,"Counting Sort", counting_sort),
            Button(x,370,150,50,"Heap Sort", heap_sort),
            Button(x, 420, 150, 50, "Tim Sort", tim_sort),
+           Button(x, 470, 150, 50, "Radix Sort", radix_sort),
            Button(0,0,50,20,"Quit", quit)]
 input_boxes = [InputBox(1050, 600, 200, 40, "Set Array Length", plotter.initialize_array)]
 running = True
