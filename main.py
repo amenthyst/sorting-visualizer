@@ -401,22 +401,97 @@ def heap_sort(screen):
         return array
     yield from heap_sort(array)
 
+def tim_sort(screen):
+    array = plotter.array
+    MIN = 32
+    def calcRun(length):
+        runs = 0
+        while length >= MIN:
+            # bitwise stuff idk im just copying this algorithm
+            runs |= length & 1
+            length >>= 1
+        return runs + length
+    def insertionSort(array, left, right):
+        for i in range(left+1, right+1):
+            j = i
+            while j > left and array[j] < array[j-1]:
+                array[j], array[j-1] = array[j-1], array[j]
+                plotter.draw_whole_array(screen, color_info={j: "red"})
+                yield True
+                j -= 1
+    def merge(array, l, m, r):
+        len1 = m - l + 1
+        len2 = r - m
+        left = []
+        right = []
+        for i in range(len1):
+            left.append(array[l + i])
+        for i in range(len2):
+            right.append(array[m + 1 + i])
+        i = 0
+        j = 0
+        k = l
+        while i < len1 and j < len2:
+            if left[i] <= right[j]:
+                array[k] = left[i]
+                plotter.draw_whole_array(screen, color_info={k: "red"})
+                yield True
+                i += 1
+            else:
+                array[k] = right[j]
+                plotter.draw_whole_array(screen, color_info={k: "red"})
+                yield True
+                j += 1
+            k += 1
+        while i < len1:
+            array[k] = left[i]
+            plotter.draw_whole_array(screen, color_info={k: "red"})
+            yield True
+            i += 1
+            k += 1
+        while j < len2:
+            array[k] = right[j]
+            plotter.draw_whole_array(screen, color_info={k: "red"})
+            yield True
+            j += 1
+            k += 1
+    def tim_sort(array):
+        length = len(array)
+        minruns = calcRun(length)
+        # sort subarray "runs" with insertion sort
+        for start in range(0, length, minruns):
+            end = min(start + minruns - 1, length - 1)
+            yield from insertionSort(array, start, end)
+        size = minruns
+        while size < length:
+            for left in range(0, length, 2 * size):
+                # left to mid: left array
+                # mid+1 to right: right array
+                # sort the two arrays with merge sort
+                mid = min(left + size - 1, length - 1)
+                right = min(left + (2*size) - 1, length - 1)
+                if mid < right:
+                     yield from merge(array, left, mid, right)
+            # double size to sort 2 bigger arrays
+            size *= 2
+    yield from tim_sort(array)
 
 
 def quit(screen):
     pygame.quit()
     exit()
 
+x = screen.get_size()[0] - 200
 
-
-buttons = [Button(1050, 20, 100, 50, "Shuffle", plotter.shuffle),
-           Button(1050, 70, 150, 50, "Bubble Sort", bubble_sort),
-           Button(1050,120,150,50,"Insertion Sort", insertion_sort),
-           Button(1050,170,150,50,"Merge Sort", merge_sort),
-           Button(1050,220,150,50,"Quick Sort", quick_sort),
-           Button(1050,270,150,50,"Shaker Sort", shaker_sort),
-           Button(1050,320,150,50,"Counting Sort", counting_sort),
-           Button(1050,370,150,50,"Heap Sort", heap_sort),
+buttons = [Button(x, 20, 100, 50, "Shuffle", plotter.shuffle),
+           Button(x, 70, 150, 50, "Bubble Sort", bubble_sort),
+           Button(x,120,150,50,"Insertion Sort", insertion_sort),
+           Button(x,170,150,50,"Merge Sort", merge_sort),
+           Button(x,220,150,50,"Quick Sort", quick_sort),
+           Button(x,270,150,50,"Shaker Sort", shaker_sort),
+           Button(x,320,150,50,"Counting Sort", counting_sort),
+           Button(x,370,150,50,"Heap Sort", heap_sort),
+           Button(x, 420, 150, 50, "Tim Sort", tim_sort),
            Button(0,0,50,20,"Quit", quit)]
 input_boxes = [InputBox(1050, 600, 200, 40, "Set Array Length", plotter.initialize_array)]
 running = True
