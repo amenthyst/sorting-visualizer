@@ -2,10 +2,11 @@ import pygame
 import random
 
 pygame.init()
-screen_size = (1300, 650)
+
+max_amount = 1000
 
 # create a window
-screen = pygame.display.set_mode(screen_size)
+screen = pygame.display.set_mode(flags=pygame.FULLSCREEN)
 pygame.display.set_caption("pygame Test")
 
 # clock is used to set a max fps
@@ -131,7 +132,7 @@ class ArrayPlotter:
 
     def draw_whole_array(self, screen, clear=True, color_info={}):
         # leaving a portion of the screen for UI
-        size = (screen.get_size()[0] - 300, screen.get_size()[1])
+        size = (screen.get_size()[0] - (screen.get_size()[0] - max_amount), screen.get_size()[1])
 
         if clear:
             self.clear(screen)
@@ -160,7 +161,7 @@ class ArrayPlotter:
             yield True
 
     def clear(self, screen):
-        rect = pygame.Surface((1000, 650))
+        rect = pygame.Surface((screen.get_size()[0]-(screen.get_size()[0] - max_amount), screen.get_size()[1]))
         rect.fill("black")
         screen.blit(rect, (0, 0))
 
@@ -293,11 +294,11 @@ def quick_sort(screen):
             if array[j] < pivot:
                 i += 1
                 array[i], array[j] = array[j], array[i]
-                plotter.draw_whole_array(screen, color_info={i + 1: "red"})
+                plotter.draw_whole_array(screen, color_info={i + 1: "red", high: "blue"})
                 yield True
 
         array[i + 1], array[high] = array[high], array[i + 1]
-        plotter.draw_whole_array(screen, color_info={i + 1: "red"})
+        plotter.draw_whole_array(screen, color_info={i + 1: "red", high: "blue"})
         return i + 1
 
     def quick_sort(array, low, high):
@@ -359,9 +360,52 @@ def counting_sort(screen):
         plotter.draw_whole_array(screen, color_info={i: "red"})
         yield True
 
+def heap_sort(screen):
+    array = plotter.array
+    def heapify(array, length, i):
+        # i is index of root
+        largest = i
+        # left child of root node
+        left = 2 * i + 1
+        # right child of root node
+        right = 2 * i + 2
+
+        # if left child is bigger than root node
+        if left < length and array[left] > array[largest]:
+            largest = left
+        # if right child is bigger than root node
+        if right < length and array[right] > array[largest]:
+            largest = right
+
+        # if largest is not root
+        if largest != i:
+            array[i], array[largest] = array[largest], array[i]
+
+            plotter.draw_whole_array(screen, color_info={largest: "red"})
+            yield True
+            yield from heapify(array,length,largest)
+    def heap_sort(array):
+        length = len(array)
+
+        # build heap
+        for i in range(length, -1, -1):
+            yield from heapify(array,length,i)
+
+        # extract root (max element) from heap 1 by 1
+        for i in range(length-1, 0, -1):
+            array[i], array[0] = array[0], array[i]
+            plotter.draw_whole_array(screen,color_info={i: "red"})
+            yield True
+            # heapify after max element is taken, get next max element
+            yield from heapify(array,i,0)
+        return array
+    yield from heap_sort(array)
 
 
 
+def quit(screen):
+    pygame.quit()
+    exit()
 
 
 
@@ -371,7 +415,9 @@ buttons = [Button(1050, 20, 100, 50, "Shuffle", plotter.shuffle),
            Button(1050,170,150,50,"Merge Sort", merge_sort),
            Button(1050,220,150,50,"Quick Sort", quick_sort),
            Button(1050,270,150,50,"Shaker Sort", shaker_sort),
-           Button(1050,320,150,50,"Counting Sort", counting_sort)]
+           Button(1050,320,150,50,"Counting Sort", counting_sort),
+           Button(1050,370,150,50,"Heap Sort", heap_sort),
+           Button(0,0,50,20,"Quit", quit)]
 input_boxes = [InputBox(1050, 600, 200, 40, "Set Array Length", plotter.initialize_array)]
 running = True
 while running:
