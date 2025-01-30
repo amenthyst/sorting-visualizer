@@ -122,6 +122,7 @@ class ArrayPlotter:
         self.currentgen = None
 
     def initialize_array(self,length,screen):
+        self.currentgen = None
         for char in str(length):
             if not char.isnumeric():
                 return
