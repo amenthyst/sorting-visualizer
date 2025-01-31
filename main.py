@@ -33,7 +33,7 @@ class Button:
         }
         self.isPressed = False
 
-    def process(self, screen):
+    def process(self):
         mousePos = pygame.mouse.get_pos()
         self.surface.fill(self.fillColors['normal'])
         if self.rect.collidepoint(mousePos):
@@ -41,7 +41,7 @@ class Button:
             if pygame.mouse.get_pressed()[0]:
                 self.surface.fill(self.fillColors['pressed'])
                 if not self.isPressed:
-                    plotter.toggleGen(screen, self.on_click)
+                    plotter.toggleGen(self.on_click)
                     self.isPressed = True
             else:
                 self.isPressed = False
@@ -65,7 +65,7 @@ class InputBox:
         self.on_enter = on_enter
 
 
-    def handle_event(self, event, screen):
+    def handle_event(self, event):
         x, y, w, h = self.rect
         if event.type == pygame.MOUSEBUTTONDOWN:
             # If the user clicked on the input_box rect.
@@ -76,7 +76,7 @@ class InputBox:
                 self.active = False
         if event.type == pygame.KEYDOWN and self.active:
             if event.key == pygame.K_RETURN:
-                self.on_enter(self.text,screen)
+                self.on_enter(self.text)
                 pygame.draw.rect(screen, "black", pygame.Rect(x + 2, y + 2, w, h))
                 self.text = ""
                 self.active = False
@@ -87,7 +87,7 @@ class InputBox:
                 self.text += event.unicode
         self.txt_surface = FONT.render(self.text, True, "white")
 
-    def handle_surfaces(self,screen):
+    def handle_surfaces(self):
         x,y,w,h = self.rect
         if self.text == "":
             # clear the input box
@@ -102,8 +102,8 @@ class InputBox:
         else:
             self.color = self.inactive_color
 
-    def process(self, screen):
-        self.handle_surfaces(screen)
+    def process(self):
+        self.handle_surfaces()
         screen.blit(self.current_surf, (self.rect.x + 24, self.rect.y + 8))
         # Blit the rect.
         pygame.draw.rect(screen, self.color, self.rect, 2)
@@ -115,13 +115,22 @@ class ArrayPlotter:
         (list(range(256)) + list(reversed(range(256)))),
         ([0] * 256 + list(range(256)))))
 
+
     # sin gle t o n.
     def __init__(self):
         self.array = []
         self.finished = False
         self.currentgen = None
+        self.endless = True
 
-    def initialize_array(self,length,screen):
+        # for endless mode
+        self.current_sort = 0
+        self.sorting = False
+        self.shuffling = False
+        self.finishing = False
+        self.lengths = [100, 200, max_amount, max_amount, 300, max_amount, max_amount, max_amount, max_amount]
+
+    def initialize_array(self,length):
         self.currentgen = None
         for char in str(length):
             if not char.isnumeric():
@@ -130,14 +139,14 @@ class ArrayPlotter:
         self.array = []
         for i in range(length):
             self.array.append(i)
-        self.draw_whole_array(screen)
+        self.draw_whole_array()
 
-    def draw_whole_array(self, screen, clear=True, color_info={}):
+    def draw_whole_array(self, clear=True, color_info={}):
         # leaving a portion of the screen for UI
         size = (screen.get_size()[0] - (screen.get_size()[0] - max_amount), screen.get_size()[1])
 
         if clear:
-            self.clear(screen)
+            self.clear()
         # dividing makes the bars fit on the screen no matter how many there are
         width = size[0] / len(self.array)
 
@@ -152,43 +161,44 @@ class ArrayPlotter:
             else:
                 pygame.draw.rect(screen, "white", pygame.Rect(x, y, width, height))
 
-    def shuffle(self, screen):
+    def shuffle(self):
         for i in range(len(self.array) - 1, 0, -1):
             # pick a random index from 0 to i
             j = random.randint(0, i)
 
             # swap arr[i] with the element at random index
             self.array[i], self.array[j] = self.array[j], self.array[i]
-            self.draw_whole_array(screen)
+            self.draw_whole_array()
             yield True
 
-    def clear(self, screen):
+    def clear(self):
         rect = pygame.Surface((screen.get_size()[0]-(screen.get_size()[0] - max_amount), screen.get_size()[1]))
         rect.fill("black")
         screen.blit(rect, (0, 0))
 
-    def finish(self, screen):
+    def finish(self):
         for i in range(len(self.array)):
             color_dict = {}
             for j in range(i+1):
                 color_dict[j] = ArrayPlotter.gradient[round(j * (len(ArrayPlotter.gradient) / len(self.array)))]
-            self.draw_whole_array(screen, False, color_dict)
+            self.draw_whole_array(color_info=color_dict)
             yield True
 
 
 
-    def toggleGen(self, screen, gen):
+    def toggleGen(self, gen):
         # abstraction innit
-        self.currentgen = gen(screen)
-    def toggleFinish(self, screen):
-        self.currentgen = self.finish(screen)
-    def process(self, screen):
+        self.currentgen = gen()
+    def toggleFinish(self):
+        self.currentgen = self.finish()
+    def process(self):
 
         if not self.finished:
-            self.toggleFinish(screen)
+            self.toggleFinish()
             self.finished = True
         if not self.finished:
-            self.draw_whole_array(screen)
+            self.draw_whole_array()
+
         try:
             if self.currentgen is not None:
                 next(self.currentgen)
@@ -199,11 +209,47 @@ class ArrayPlotter:
                 self.finished = False
             self.currentgen = None
 
+    def process_endless(self, sorts):
+        if self.currentgen is None:
+            self.currentgen = self.finish()
+        sorting_names = [x.__name__ for x in sorts]
+        finish = self.finish.__name__
+        shuffle = self.shuffle.__name__
+        if self.finishing:
+            self.currentgen = self.finish()
+            self.finishing = False
+        if self.shuffling:
+            self.currentgen = self.shuffle()
+            self.shuffling = False
+        if self.sorting:
+            self.currentgen = sorts[self.current_sort]()
+        try:
+            if self.currentgen is not None:
+                next(self.currentgen)
+        except StopIteration:
+            name = self.currentgen.__name__
+            if name == finish:
+                pygame.time.delay(1000)
+                self.initialize_array(self.lengths[self.current_sort])
+                self.currentgen = self.shuffle()
+            elif name == shuffle:
+                pygame.time.delay(1500)
+                self.currentgen = sorts[self.current_sort]()
+            elif name in sorting_names:
+                self.currentgen = self.finish()
+                self.current_sort += 1
+                if self.current_sort >= len(sorts):
+                    self.current_sort = 0
+
+
+
+
+
 
 
 plotter = ArrayPlotter()
-plotter.initialize_array(100,screen)
-def bubble_sort(screen):
+plotter.initialize_array(100)
+def bubble_sort():
     array = plotter.array
     sorted = True
     for i in range(len(array)):
@@ -211,13 +257,13 @@ def bubble_sort(screen):
             if array[j] > array[j+1]:
                 array[j], array[j+1] = array[j+1], array[j]
                 sorted = False
-            plotter.draw_whole_array(screen,color_info={j+1: "red"})
+            plotter.draw_whole_array(color_info={j+1: "red"})
             yield True
         if sorted:
             return
 
 
-def insertion_sort(screen):
+def insertion_sort():
     array = plotter.array
     for i in range(1,len(array)):
         key = array[i]
@@ -228,10 +274,10 @@ def insertion_sort(screen):
             array[i] = array[i-1]
             i -= 1
             array[i] = key
-            plotter.draw_whole_array(screen,color_info={i:"red"})
+            plotter.draw_whole_array(color_info={i:"red"})
             yield True
 
-def merge_sort(screen):
+def merge_sort():
     array = plotter.array
     def merge(array,l,m,r):
         # n1 is length of left subarray, n2 is length of right subarray
@@ -258,21 +304,21 @@ def merge_sort(screen):
                 array[k] = R[j]
                 j += 1
             k += 1
-            plotter.draw_whole_array(screen, color_info={k:"red"})
+            plotter.draw_whole_array(color_info={k:"red"})
             yield True
         while i < n1:
             # if there are still unprocessed element in left subarray they are added to main array
             array[k] = L[i]
             i += 1
             k += 1
-            plotter.draw_whole_array(screen, color_info={k:"red"})
+            plotter.draw_whole_array(color_info={k:"red"})
             yield True
         while j < n2:
             # if there are still unprocessed element in right subarray they are added to main array
             array[k] = R[j]
             j += 1
             k += 1
-            plotter.draw_whole_array(screen, color_info={k: "red"})
+            plotter.draw_whole_array(color_info={k: "red"})
             yield True
         return array
     def merge_sort(array,l,r):
@@ -286,7 +332,7 @@ def merge_sort(screen):
     return array
 
 
-def quick_sort(screen):
+def quick_sort():
     array = plotter.array
 
     def partition(array, low, high):
@@ -296,11 +342,11 @@ def quick_sort(screen):
             if array[j] < pivot:
                 i += 1
                 array[i], array[j] = array[j], array[i]
-                plotter.draw_whole_array(screen, color_info={i + 1: "red", high: "blue"})
+                plotter.draw_whole_array(color_info={i + 1: "red", high: "blue"})
                 yield True
 
         array[i + 1], array[high] = array[high], array[i + 1]
-        plotter.draw_whole_array(screen, color_info={i + 1: "red", high: "blue"})
+        plotter.draw_whole_array(color_info={i + 1: "red", high: "blue"})
         return i + 1
 
     def quick_sort(array, low, high):
@@ -312,7 +358,7 @@ def quick_sort(screen):
     yield from quick_sort(array, 0, len(array) - 1)
 
 
-def shaker_sort(screen):
+def shaker_sort():
     array = plotter.array
     start = 0
     end = len(array)-1
@@ -324,7 +370,7 @@ def shaker_sort(screen):
             if array[i] > array[i+1]:
                 array[i], array[i+1] = array[i+1], array[i]
                 swapped = True
-                plotter.draw_whole_array(screen, color_info={i: "red"})
+                plotter.draw_whole_array(color_info={i: "red"})
                 yield True
         if not swapped:
             break
@@ -335,13 +381,13 @@ def shaker_sort(screen):
             if array[i] > array[i+1]:
                 array[i], array[i + 1] = array[i + 1], array[i]
                 swapped = True
-                plotter.draw_whole_array(screen, color_info={i: "red"})
+                plotter.draw_whole_array(color_info={i: "red"})
                 yield True
         if not swapped:
             break
         start += 1
 
-def counting_sort(screen):
+def counting_sort():
     array = plotter.array
     M = max(array)
     count_array = [0] * (M+1)
@@ -355,14 +401,14 @@ def counting_sort(screen):
     for i in range(len(array)-1, -1, -1):
         output[count_array[array[i]] - 1] = array[i]
         count_array[array[i]] -= 1
-        plotter.draw_whole_array(screen, color_info={i:"red"})
+        plotter.draw_whole_array(color_info={i:"red"})
         yield True
     for i in range(len(array)):
         array[i] = output[i]
-        plotter.draw_whole_array(screen, color_info={i: "red"})
+        plotter.draw_whole_array(color_info={i: "red"})
         yield True
 
-def heap_sort(screen):
+def heap_sort():
     array = plotter.array
     def heapify(array, length, i):
         # i is index of root
@@ -383,7 +429,7 @@ def heap_sort(screen):
         if largest != i:
             array[i], array[largest] = array[largest], array[i]
 
-            plotter.draw_whole_array(screen, color_info={largest: "red"})
+            plotter.draw_whole_array(color_info={largest: "red"})
             yield True
             yield from heapify(array,length,largest)
     def heap_sort(array):
@@ -396,14 +442,14 @@ def heap_sort(screen):
         # extract root (max element) from heap 1 by 1
         for i in range(length-1, 0, -1):
             array[i], array[0] = array[0], array[i]
-            plotter.draw_whole_array(screen,color_info={i: "red"})
+            plotter.draw_whole_array(color_info={i: "red"})
             yield True
             # heapify after max element is taken, get next max element
             yield from heapify(array,i,0)
         return array
     yield from heap_sort(array)
 
-def tim_sort(screen):
+def tim_sort():
     array = plotter.array
     MIN = 32
     def calcRun(length):
@@ -418,7 +464,7 @@ def tim_sort(screen):
             j = i
             while j > left and array[j] < array[j-1]:
                 array[j], array[j-1] = array[j-1], array[j]
-                plotter.draw_whole_array(screen, color_info={j: "red"})
+                plotter.draw_whole_array(color_info={j: "red"})
                 yield True
                 j -= 1
     def merge(array, l, m, r):
@@ -436,24 +482,24 @@ def tim_sort(screen):
         while i < len1 and j < len2:
             if left[i] <= right[j]:
                 array[k] = left[i]
-                plotter.draw_whole_array(screen, color_info={k: "red"})
+                plotter.draw_whole_array(color_info={k: "red"})
                 yield True
                 i += 1
             else:
                 array[k] = right[j]
-                plotter.draw_whole_array(screen, color_info={k: "red"})
+                plotter.draw_whole_array(color_info={k: "red"})
                 yield True
                 j += 1
             k += 1
         while i < len1:
             array[k] = left[i]
-            plotter.draw_whole_array(screen, color_info={k: "red"})
+            plotter.draw_whole_array(color_info={k: "red"})
             yield True
             i += 1
             k += 1
         while j < len2:
             array[k] = right[j]
-            plotter.draw_whole_array(screen, color_info={k: "red"})
+            plotter.draw_whole_array(color_info={k: "red"})
             yield True
             j += 1
             k += 1
@@ -478,7 +524,7 @@ def tim_sort(screen):
             size *= 2
     yield from tim_sort(array)
 
-def radix_sort(screen):
+def radix_sort():
     array = plotter.array
     # stable sorting algorithm to sort each digit
     def counting_sort(array, exp):
@@ -502,7 +548,7 @@ def radix_sort(screen):
         i=0
         for i in range(n):
             array[i] = output[i]
-            plotter.draw_whole_array(screen,color_info={i: "red"})
+            plotter.draw_whole_array(color_info={i: "red"})
             yield True
 
     def radix_sort(array):
@@ -513,38 +559,39 @@ def radix_sort(screen):
             exp *= 10
     yield from radix_sort(array)
 
-def quit(screen):
+sorts = [bubble_sort, insertion_sort, merge_sort, quick_sort, shaker_sort, counting_sort, heap_sort, tim_sort,
+                 radix_sort]
+def quit():
     pygame.quit()
     exit()
 
+
 x = screen.get_size()[0] - 200
 
-buttons = [Button(x, 20, 100, 50, "Shuffle", plotter.shuffle),
-           Button(x, 70, 150, 50, "Bubble Sort", bubble_sort),
-           Button(x,120,150,50,"Insertion Sort", insertion_sort),
-           Button(x,170,150,50,"Merge Sort", merge_sort),
-           Button(x,220,150,50,"Quick Sort", quick_sort),
-           Button(x,270,150,50,"Shaker Sort", shaker_sort),
-           Button(x,320,150,50,"Counting Sort", counting_sort),
-           Button(x,370,150,50,"Heap Sort", heap_sort),
-           Button(x, 420, 150, 50, "Tim Sort", tim_sort),
-           Button(x, 470, 150, 50, "Radix Sort", radix_sort),
-           Button(0,0,50,20,"Quit", quit)]
-input_boxes = [InputBox(1050, 600, 200, 40, "Set Array Length", plotter.initialize_array)]
+buttons = [
+           Button(0,0,50,20,"Quit", quit),
+           Button(x, 0, 150, 50, "Shuffle", plotter.shuffle)]
+for i, sort in enumerate(sorts):
+    buttons.append(Button(x, 150+i*50, 150, 50, sort.__name__, sort))
+
+
+input_boxes = [InputBox(1050, 700, 200, 40, "Set Array Length", plotter.initialize_array)]
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
         for box in input_boxes:
-            box.handle_event(event,screen)
-
-    plotter.process(screen)
+            box.handle_event(event)
+    if plotter.endless:
+        plotter.process_endless(sorts)
+    else:
+        plotter.process()
     # clear the screen
     for button in buttons:
-        button.process(screen)
+        button.process()
     for box in input_boxes:
-        box.process(screen)
+        box.process()
     # draw to the screen
     # flip() updates the screen to make our changes visible
     pygame.display.flip()
