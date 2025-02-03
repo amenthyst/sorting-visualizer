@@ -121,14 +121,14 @@ class ArrayPlotter:
         self.array = []
         self.finished = False
         self.currentgen = None
-        self.endless = True
+        self.endless = False
 
         # for endless mode
         self.current_sort = 0
         self.sorting = False
         self.shuffling = False
         self.finishing = False
-        self.lengths = [100, 200, max_amount, max_amount, 300, max_amount, max_amount, max_amount, max_amount]
+        self.lengths = [100, 200, max_amount, max_amount, 300, max_amount, max_amount, max_amount, max_amount,500]
 
     def initialize_array(self,length):
         self.currentgen = None
@@ -179,12 +179,14 @@ class ArrayPlotter:
     def finish(self):
         for i in range(len(self.array)):
             color_dict = {}
-            for j in range(i+1):
-                color_dict[j] = ArrayPlotter.gradient[round(j * (len(ArrayPlotter.gradient) / len(self.array)))]
+            for j in range(i):
+                color_dict[j] = "green"
+                color_dict[j+1] = "red"
             self.draw_whole_array(color_info=color_dict)
             yield True
 
-
+    def toggleEndless(self):
+        self.endless = not self.endless
 
     def toggleGen(self, gen):
         # abstraction innit
@@ -240,9 +242,27 @@ class ArrayPlotter:
                 self.current_sort += 1
                 if self.current_sort >= len(sorts):
                     self.current_sort = 0
+    def draw_text(self, sorts):
+        color = "white"
+        if self.currentgen is not None:
 
-
-
+            if self.currentgen.__name__ == "shuffle":
+                text = f"Shuffling..."
+            elif self.currentgen.__name__ == "finish":
+                text = f"Sorted!"
+                color = "green"
+            else:
+                text = f"Current Sort: {self.currentgen.__name__}"
+            if self.endless:
+                if self.currentgen.__name__ == "shuffle" or self.currentgen.__name__ == "finish":
+                    text += f"  Next Sort: {sorts[self.current_sort].__name__}"
+                elif self.current_sort == len(sorts)-1:
+                    text += f"  Next Sort: {sorts[0].__name__}"
+                else:
+                    text += f"  Next Sort: {sorts[self.current_sort+1].__name__}"
+            surf = FONT.render(text, True, color)
+            size = screen.get_size()
+            screen.blit(surf, (size[0]-(size[0]-75), 0))
 
 
 
@@ -559,8 +579,34 @@ def radix_sort():
             exp *= 10
     yield from radix_sort(array)
 
+def shell_sort():
+    array = plotter.array
+    n = len(array)
+    gap = n // 2
+    while gap > 0:
+        j = gap
+        # Check the array in from left to right
+        # Till the last possible index of j
+        while j < n:
+            i = j - gap  # This will keep help in maintain gap value
+
+            while i >= 0:
+                # If value on right side is already greater than left side value
+                # We don't do swap else we swap
+                if array[i + gap] > array[i]:
+                    break
+                else:
+                    array[i + gap], array[i] = array[i], array[i + gap]
+                    plotter.draw_whole_array(color_info={i+gap: "red", i: "red"})
+                    yield True
+                i = i - gap  # To check left side also
+                # If the element present is greater than current element
+            j += 1
+        gap = gap // 2
+
+
 sorts = [bubble_sort, insertion_sort, merge_sort, quick_sort, shaker_sort, counting_sort, heap_sort, tim_sort,
-                 radix_sort]
+                 radix_sort, shell_sort]
 def quit():
     pygame.quit()
     exit()
@@ -570,9 +616,10 @@ x = screen.get_size()[0] - 200
 
 buttons = [
            Button(0,0,50,20,"Quit", quit),
-           Button(x, 0, 150, 50, "Shuffle", plotter.shuffle)]
+           Button(x, 0, 150, 50, "Shuffle", plotter.shuffle),
+           Button(screen.get_size()[0]-150, screen.get_size()[1]-50, 150, 50, "Toggle Endless", plotter.toggleEndless)]
 for i, sort in enumerate(sorts):
-    buttons.append(Button(x, 150+i*50, 150, 50, sort.__name__, sort))
+    buttons.append(Button(x, 50+i*50, 150, 50, sort.__name__, sort))
 
 
 input_boxes = [InputBox(1050, 700, 200, 40, "Set Array Length", plotter.initialize_array)]
@@ -587,6 +634,7 @@ while running:
         plotter.process_endless(sorts)
     else:
         plotter.process()
+    plotter.draw_text(sorts)
     # clear the screen
     for button in buttons:
         button.process()
