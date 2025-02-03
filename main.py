@@ -128,7 +128,7 @@ class ArrayPlotter:
         self.sorting = False
         self.shuffling = False
         self.finishing = False
-        self.lengths = [100, 200, max_amount, max_amount, 300, max_amount, max_amount, max_amount, max_amount,500]
+
 
     def initialize_array(self,length):
         self.currentgen = None
@@ -211,7 +211,7 @@ class ArrayPlotter:
                 self.finished = False
             self.currentgen = None
 
-    def process_endless(self, sorts):
+    def process_endless(self, sorts, lengths):
         if self.currentgen is None:
             self.currentgen = self.finish()
         sorting_names = [x.__name__ for x in sorts]
@@ -232,7 +232,7 @@ class ArrayPlotter:
             name = self.currentgen.__name__
             if name == finish:
                 pygame.time.delay(1000)
-                self.initialize_array(self.lengths[self.current_sort])
+                self.initialize_array(lengths[self.current_sort])
                 self.currentgen = self.shuffle()
             elif name == shuffle:
                 pygame.time.delay(1500)
@@ -241,7 +241,14 @@ class ArrayPlotter:
                 self.currentgen = self.finish()
                 self.current_sort += 1
                 if self.current_sort >= len(sorts):
+                    seed = random.randint(1,10000)
+                    random.Random(seed).shuffle(sorts)
+                    random.Random(seed).shuffle(lengths)
                     self.current_sort = 0
+
+
+
+
     def draw_text(self, sorts):
         color = "white"
         if self.currentgen is not None:
@@ -607,6 +614,8 @@ def shell_sort():
 
 sorts = [bubble_sort, insertion_sort, merge_sort, quick_sort, shaker_sort, counting_sort, heap_sort, tim_sort,
                  radix_sort, shell_sort]
+lengths = [100, 200, max_amount, max_amount, 250, max_amount, max_amount, max_amount, max_amount,max_amount]
+
 def quit():
     pygame.quit()
     exit()
@@ -631,7 +640,7 @@ while running:
         for box in input_boxes:
             box.handle_event(event)
     if plotter.endless:
-        plotter.process_endless(sorts)
+        plotter.process_endless(sorts, lengths)
     else:
         plotter.process()
     plotter.draw_text(sorts)
