@@ -4,7 +4,7 @@ import random
 pygame.init()
 
 # TODO: shell sort, bucket sort, selection sort, bogo sort, screen saver mode
-max_amount = 1000
+max_amount = 1500
 
 # create a window
 screen = pygame.display.set_mode(flags=pygame.FULLSCREEN)
