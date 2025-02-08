@@ -2,10 +2,13 @@ import pygame
 import random
 import numpy as np
 from scipy.io.wavfile import write
+import noisereduce as nr
 pygame.init()
 
 max_amount = 1000
 
+# set http_proxy=http://ad.quantum.exa-networks.co.uk
+# pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host pypi.fileshosted.org pygame (or any other library)
 # create a window
 screen = pygame.display.set_mode(flags=pygame.FULLSCREEN)
 pygame.display.set_caption("pygame Test")
@@ -128,16 +131,20 @@ class ArrayPlotter:
         self.sorting = False
         self.shuffling = False
         self.finishing = False
-        self.sound_arr = np.linspace(130.81, 1046.5, num=len(self.array))
+        self.sound_arr = np.linspace(523.251, 1046.5, num=len(self.array))
 
     def make_sound(self, pitch: float):
         sample = 44100
         # numpy stuff, i didn't write this myself.
-        duration = 0.01
+        duration = 0.05
+
         each_sample_number = np.arange(duration * sample)  # each sample index
         waveform = np.sin(2 * np.pi * each_sample_number * pitch / sample)  # sine wave
         waveform_quiet = waveform * 0.3  # adjust volume
+
         waveform_integers = np.int16(waveform_quiet * 32767)  # actual array made from waveform
+        window = np.hanning(len(waveform_integers)) # no idea what this is but it cleans up the audio
+        waveform_integers = np.int16(waveform_quiet * 32767 * window)
         write('test.wav', sample, waveform_integers)
 
     def initialize_array(self,length):
@@ -153,13 +160,14 @@ class ArrayPlotter:
         self.sound_arr = np.linspace(130.81, 1046.5, num=len(self.array))
         self.draw_whole_array()
 
-    def draw_whole_array(self, clear=True, color_info={}, sound_info=0):
+    def draw_whole_array(self, clear=True, color_info={}, sound_info=None):
         # leaving a portion of the screen for UI
         size = (screen.get_size()[0] - (screen.get_size()[0] - max_amount), screen.get_size()[1])
-        pitch = float(self.sound_arr[sound_info])
-        self.make_sound(pitch)
-        sound = pygame.mixer.Sound('test.wav')
-        sound.play()
+        if sound_info is not None:
+            pitch = float(self.sound_arr[sound_info])
+            self.make_sound(pitch)
+            sound = pygame.mixer.Sound('test.wav')
+            sound.play()
         if clear:
             self.clear()
         # dividing makes the bars fit on the screen no matter how many there are
@@ -316,7 +324,7 @@ def insertion_sort():
             array[i] = array[i-1]
             i -= 1
             array[i] = key
-            plotter.draw_whole_array(color_info={i:"red"})
+            plotter.draw_whole_array(color_info={i:"red"}, sound_info=i)
             yield True
 
 def merge_sort():
@@ -346,21 +354,21 @@ def merge_sort():
                 array[k] = R[j]
                 j += 1
             k += 1
-            plotter.draw_whole_array(color_info={k:"red"})
+            plotter.draw_whole_array(color_info={k:"red"}, sound_info=array[k])
             yield True
         while i < n1:
             # if there are still unprocessed element in left subarray they are added to main array
             array[k] = L[i]
+            plotter.draw_whole_array(color_info={k: "red"})
             i += 1
             k += 1
-            plotter.draw_whole_array(color_info={k:"red"})
             yield True
         while j < n2:
             # if there are still unprocessed element in right subarray they are added to main array
             array[k] = R[j]
+            plotter.draw_whole_array(color_info={k: "red"})
             j += 1
             k += 1
-            plotter.draw_whole_array(color_info={k: "red"})
             yield True
         return array
     def merge_sort(array,l,r):
@@ -384,11 +392,11 @@ def quick_sort():
             if array[j] < pivot:
                 i += 1
                 array[i], array[j] = array[j], array[i]
-                plotter.draw_whole_array(color_info={i + 1: "red", high: "blue"})
+                plotter.draw_whole_array(color_info={i + 1: "red", high: "blue"}, sound_info=array[i+1])
                 yield True
 
         array[i + 1], array[high] = array[high], array[i + 1]
-        plotter.draw_whole_array(color_info={i + 1: "red", high: "blue"})
+        plotter.draw_whole_array(color_info={i + 1: "red", high: "blue"}, sound_info=array[i+1])
         return i + 1
 
     def quick_sort(array, low, high):
@@ -412,7 +420,7 @@ def shaker_sort():
             if array[i] > array[i+1]:
                 array[i], array[i+1] = array[i+1], array[i]
                 swapped = True
-                plotter.draw_whole_array(color_info={i: "red"})
+                plotter.draw_whole_array(color_info={i: "red"}, sound_info=i)
                 yield True
         if not swapped:
             break
@@ -423,7 +431,7 @@ def shaker_sort():
             if array[i] > array[i+1]:
                 array[i], array[i + 1] = array[i + 1], array[i]
                 swapped = True
-                plotter.draw_whole_array(color_info={i: "red"})
+                plotter.draw_whole_array(color_info={i: "red"}, sound_info=i)
                 yield True
         if not swapped:
             break
@@ -443,11 +451,11 @@ def counting_sort():
     for i in range(len(array)-1, -1, -1):
         output[count_array[array[i]] - 1] = array[i]
         count_array[array[i]] -= 1
-        plotter.draw_whole_array(color_info={i:"red"})
+        plotter.draw_whole_array(color_info={i:"red"}, sound_info=array[i])
         yield True
     for i in range(len(array)):
         array[i] = output[i]
-        plotter.draw_whole_array(color_info={i: "red"})
+        plotter.draw_whole_array(color_info={i: "red"}, sound_info=array[i])
         yield True
 
 def heap_sort():
@@ -471,7 +479,7 @@ def heap_sort():
         if largest != i:
             array[i], array[largest] = array[largest], array[i]
 
-            plotter.draw_whole_array(color_info={largest: "red"})
+            plotter.draw_whole_array(color_info={largest: "red"}, sound_info=array[largest])
             yield True
             yield from heapify(array,length,largest)
     def heap_sort(array):
@@ -484,7 +492,7 @@ def heap_sort():
         # extract root (max element) from heap 1 by 1
         for i in range(length-1, 0, -1):
             array[i], array[0] = array[0], array[i]
-            plotter.draw_whole_array(color_info={i: "red"})
+            plotter.draw_whole_array(color_info={i: "red"}, sound_info=array[i])
             yield True
             # heapify after max element is taken, get next max element
             yield from heapify(array,i,0)
@@ -506,7 +514,7 @@ def tim_sort():
             j = i
             while j > left and array[j] < array[j-1]:
                 array[j], array[j-1] = array[j-1], array[j]
-                plotter.draw_whole_array(color_info={j: "red"})
+                plotter.draw_whole_array(color_info={j: "red"}, sound_info=array[j])
                 yield True
                 j -= 1
     def merge(array, l, m, r):
@@ -524,24 +532,24 @@ def tim_sort():
         while i < len1 and j < len2:
             if left[i] <= right[j]:
                 array[k] = left[i]
-                plotter.draw_whole_array(color_info={k: "red"})
+                plotter.draw_whole_array(color_info={k: "red"}, sound_info=array[k])
                 yield True
                 i += 1
             else:
                 array[k] = right[j]
-                plotter.draw_whole_array(color_info={k: "red"})
+                plotter.draw_whole_array(color_info={k: "red"}, sound_info=array[k])
                 yield True
                 j += 1
             k += 1
         while i < len1:
             array[k] = left[i]
-            plotter.draw_whole_array(color_info={k: "red"})
+            plotter.draw_whole_array(color_info={k: "red"}, sound_info=array[k])
             yield True
             i += 1
             k += 1
         while j < len2:
             array[k] = right[j]
-            plotter.draw_whole_array(color_info={k: "red"})
+            plotter.draw_whole_array(color_info={k: "red"}, sound_info=array[k])
             yield True
             j += 1
             k += 1
@@ -590,7 +598,7 @@ def radix_sort():
         i=0
         for i in range(n):
             array[i] = output[i]
-            plotter.draw_whole_array(color_info={i: "red"})
+            plotter.draw_whole_array(color_info={i: "red"}, sound_info=array[i])
             yield True
 
     def radix_sort(array):
@@ -619,7 +627,7 @@ def shell_sort():
                     break
                 else:
                     array[i + gap], array[i] = array[i], array[i + gap]
-                    plotter.draw_whole_array(color_info={i+gap: "red", i: "red"})
+                    plotter.draw_whole_array(color_info={i+gap: "red", i: "red"}, sound_info=array[i])
                     yield True
                 i = i - gap  # To check left side also
                 # If the element present is greater than current element
