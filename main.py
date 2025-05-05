@@ -5,12 +5,12 @@ from scipy.io.wavfile import write
 import noisereduce as nr
 pygame.init()
 
-max_amount = 1000
+max_amount = 800
 
 # set http_proxy=http://ad.quantum.exa-networks.co.uk
 # pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host pypi.fileshosted.org pygame (or any other library)
 # create a window
-screen = pygame.display.set_mode(flags=pygame.FULLSCREEN)
+screen = pygame.display.set_mode((1200,600))
 pygame.display.set_caption("pygame Test")
 
 # clock is used to set a max fps
@@ -113,11 +113,6 @@ class InputBox:
 
 
 class ArrayPlotter:
-    gradient = tuple(zip(
-        (list(reversed(range(256))) + [0] * 256),
-        (list(range(256)) + list(reversed(range(256)))),
-        ([0] * 256 + list(range(256)))))
-
 
     # sin gle t o n.
     def __init__(self):
@@ -131,7 +126,8 @@ class ArrayPlotter:
         self.sorting = False
         self.shuffling = False
         self.finishing = False
-        self.sound_arr = np.linspace(523.251, 1046.5, num=len(self.array))
+        self.sound_arr = np.linspace(523.51, 1046.5, num=len(self.array))
+        self.volume = 0.3
 
     def make_sound(self, pitch: float):
         sample = 44100
@@ -140,11 +136,12 @@ class ArrayPlotter:
 
         each_sample_number = np.arange(duration * sample)  # each sample index
         waveform = np.sin(2 * np.pi * each_sample_number * pitch / sample)  # sine wave
-        waveform_quiet = waveform * 0.3  # adjust volume
+        waveform_quiet = waveform * self.volume  # adjust volume
 
         waveform_integers = np.int16(waveform_quiet * 32767)  # actual array made from waveform
         window = np.hanning(len(waveform_integers)) # no idea what this is but it cleans up the audio
         waveform_integers = np.int16(waveform_quiet * 32767 * window)
+        waveform_integers = nr.reduce_noise(y=waveform_integers, sr=sample)
         write('test.wav', sample, waveform_integers)
 
     def initialize_array(self,length):
@@ -157,12 +154,12 @@ class ArrayPlotter:
         for i in range(length):
             self.array.append(i)
 
-        self.sound_arr = np.linspace(130.81, 1046.5, num=len(self.array))
+        self.sound_arr = np.linspace(261.626, 1046.5, num=len(self.array))
         self.draw_whole_array()
 
     def draw_whole_array(self, clear=True, color_info={}, sound_info=None):
         # leaving a portion of the screen for UI
-        size = (screen.get_size()[0] - (screen.get_size()[0] - max_amount), screen.get_size()[1])
+        size = (screen.get_size()[0] - 300, screen.get_size()[1])
         if sound_info is not None:
             pitch = float(self.sound_arr[sound_info])
             self.make_sound(pitch)
@@ -195,7 +192,7 @@ class ArrayPlotter:
             yield True
 
     def clear(self):
-        rect = pygame.Surface((screen.get_size()[0]-(screen.get_size()[0] - max_amount), screen.get_size()[1]))
+        rect = pygame.Surface((screen.get_size()[0]-300, screen.get_size()[1]))
         rect.fill("black")
         screen.blit(rect, (0, 0))
 
@@ -269,7 +266,14 @@ class ArrayPlotter:
                     random.Random(seed).shuffle(lengths)
                     self.current_sort = 0
 
-
+    def set_volume(self, volume):
+        for char in volume:
+            if not char.isnumeric():
+                return
+        volume = int(volume)
+        if volume < 1 or volume > 100:
+            return
+        self.volume = (volume/1000) * 0.3
 
 
     def draw_text(self, sorts):
@@ -637,7 +641,7 @@ def shell_sort():
 
 sorts = [bubble_sort, insertion_sort, merge_sort, quick_sort, shaker_sort, counting_sort, heap_sort, tim_sort,
                  radix_sort, shell_sort]
-lengths = [100, 200, max_amount, max_amount, 250, max_amount, max_amount, max_amount, max_amount,max_amount]
+lengths = [100, 100, 500, max_amount, 200, max_amount, max_amount, max_amount, max_amount,max_amount]
 
 def quit():
     pygame.quit()
@@ -650,19 +654,25 @@ buttons = [
            Button(0,0,50,20,"Quit", quit),
            Button(x, 0, 150, 50, "Shuffle", plotter.shuffle),
            Button(screen.get_size()[0]-150, screen.get_size()[1]-50, 150, 50, "Toggle Endless", plotter.toggleEndless)]
-input_boxes = [InputBox(x, 600, 150, 30, "Set Array Length", plotter.initialize_array)]
+input_boxes = [InputBox(x, 600, 150, 30, "Set Array Length", plotter.initialize_array),
+               InputBox(x, 800, 150, 30, "Set Volume", plotter.set_volume)]
 for i, sort in enumerate(sorts):
     buttons.append(Button(x, 50+i*50, 150, 50, sort.__name__, sort))
 
 running = True
 while running:
-    dt = clock.tick(100)
+    keys = pygame.key.get_pressed()
+    #dt = clock.tick(100)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
+
         for box in input_boxes:
             box.handle_event(event)
+    if keys[pygame.K_q]:
+        pygame.draw.rect(screen, 'black', pygame.Rect(0,0, screen.get_size()[0], screen.get_size()[1]))
+        plotter.draw_whole_array()
     if plotter.endless:
         plotter.process_endless(sorts, lengths)
     else:
@@ -681,5 +691,3 @@ while running:
 
 
 pygame.quit()
-
-input_boxes = [InputBox(1050, 700, 200, 40, "Set Array Length", plotter.initialize_array)]
